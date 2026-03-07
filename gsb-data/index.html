@@ -2,53 +2,167 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GSB Data Explorer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GSB Data Explorer - Responsive</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f0f0; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden;}
-        .explorer-header { background-color: #fff; padding: 10px 20px; border-bottom: 1px solid #ddd; display: flex; align-items: center; gap: 15px; }
-        .path-bar { flex-grow: 1; border: 1px solid #ccc; padding: 5px 10px; background-color: #f9f9f9; font-size: 14px; color: #333; }
-        .main-container { display: flex; flex: 1; overflow: hidden; }
+        /* Pengaturan Dasar */
+        * { box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #f0f0f0; 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            overflow: hidden; 
+        }
+
+        /* Header Explorer */
+        .explorer-header { 
+            background-color: #fff; 
+            padding: 10px 20px; 
+            border-bottom: 1px solid #ddd; 
+            display: flex; 
+            align-items: center; 
+            gap: 15px; 
+        }
+        .header-title {
+            font-weight: bold; 
+            color: #0067b8;
+            white-space: nowrap;
+        }
+        .path-bar { 
+            flex-grow: 1; 
+            border: 1px solid #ccc; 
+            padding: 5px 10px; 
+            background-color: #f9f9f9; 
+            font-size: 14px; 
+            color: #333; 
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Layout Utama (Kiri-Kanan untuk Desktop) */
+        .main-container { 
+            display: flex; 
+            flex: 1; 
+            overflow: hidden; 
+            flex-direction: row; /* Default Desktop */
+        }
         
-        #file-list { width: 35%; min-width: 250px; background-color: #fff; border-right: 1px solid #ddd; overflow-y: auto; }
-        .file-item { display: flex; align-items: center; padding: 10px 15px; cursor: pointer; border-bottom: 1px solid #f0f0f0; transition: background 0.2s; }
+        /* Panel Kiri: Daftar File */
+        #file-list { 
+            width: 35%; 
+            min-width: 250px; 
+            background-color: #fff; 
+            border-right: 1px solid #ddd; 
+            overflow-y: auto; 
+        }
+        .file-item { 
+            display: flex; 
+            align-items: center; 
+            padding: 12px 15px; 
+            cursor: pointer; 
+            border-bottom: 1px solid #f0f0f0; 
+            transition: background 0.2s; 
+        }
         .file-item:hover { background-color: #e5f3ff; }
-        .file-item.active { background-color: #cce8ff; outline: 1px solid #99d1ff; }
+        .file-item.active { background-color: #cce8ff; border-left: 4px solid #0067b8; padding-left: 11px; }
         .file-icon { width: 24px; height: 24px; margin-right: 12px; color: #e74c3c; flex-shrink: 0; }
         .file-name { font-size: 13px; color: #333; word-break: break-all; }
         
-        #preview-container { flex: 1; background-color: #525659; display: flex; flex-direction: column; position: relative; }
+        /* Panel Kanan: Preview PDF */
+        #preview-container { 
+            flex: 1; 
+            background-color: #525659; 
+            display: flex; 
+            flex-direction: column; 
+            position: relative; 
+        }
         iframe { width: 100%; height: 100%; border: none; display: none; background: white;}
-        .placeholder { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; text-align: center; }
+        .placeholder { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; text-align: center; width: 80%; }
         
         /* Tombol Buka Tab Baru */
-        .fallback-link { display: none; position: absolute; bottom: 20px; right: 20px; background: #0067b8; color: white; padding: 10px 15px; text-decoration: none; border-radius: 4px; font-size: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.3); z-index: 10; font-weight: bold;}
+        .fallback-link { 
+            display: none; 
+            position: absolute; 
+            bottom: 20px; 
+            right: 20px; 
+            background: #0067b8; 
+            color: white; 
+            padding: 10px 15px; 
+            text-decoration: none; 
+            border-radius: 4px; 
+            font-size: 14px; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.4); 
+            z-index: 10; 
+            font-weight: bold;
+        }
         .fallback-link:hover { background: #005da6; }
+
+        /* =========================================================
+           MEDIA QUERIES (Untuk Tablet & Cellular / Mobile) 
+           ========================================================= */
+        @media screen and (max-width: 768px) {
+            .explorer-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+                padding: 10px;
+            }
+            .path-bar { width: 100%; }
+            
+            /* Ubah layout menjadi Atas-Bawah */
+            .main-container { flex-direction: column; }
+            
+            #file-list { 
+                width: 100%; 
+                min-width: 100%;
+                height: 35vh; /* Mengambil 35% tinggi layar HP */
+                border-right: none; 
+                border-bottom: 2px solid #ccc; 
+            }
+            
+            #preview-container { 
+                width: 100%;
+                height: 65vh; /* Mengambil sisa layar untuk PDF */
+            }
+
+            .fallback-link {
+                bottom: 10px;
+                right: 10px;
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+        }
     </style>
 </head>
 <body>
 
     <div class="explorer-header">
-        <div style="font-weight: bold; color: #0067b8;">GSB-DATA Explorer</div>
+        <div class="header-title">GSB-DATA Explorer</div>
         <div class="path-bar">This PC > Document > gsb-data</div>
     </div>
 
     <div class="main-container">
         <div id="file-list"></div>
+        
         <div id="preview-container">
             <div id="msg" class="placeholder">
                 <h3>Pratinjau File</h3>
-                <p>Pilih file PDF di sebelah kiri untuk melihat isi.</p>
+                <p>Pilih file PDF untuk melihat isi.</p>
             </div>
             <iframe id="pdf-viewer"></iframe>
-            <a id="fallback-btn" class="fallback-link" href="#" target="_blank">Buka PDF di Tab Baru</a>
+            <a id="fallback-btn" class="fallback-link" href="#" target="_blank">Buka PDF Fullscreen</a>
         </div>
     </div>
 
     <script>
-        // Link halaman GitHub Pages Anda
+        // Link utama folder data Anda
         const rawBaseUrl = "https://faridazrighani.github.io/gsb-data/";
 
+        // Daftar file PDF
         const pdfFiles = [
             "Q24-102-STR-01.pdf",
             "V-24021-GSB-ME-CL-001_PIG RECEIVER (S-3000)_REV C_CALCULATION.pdf",
@@ -74,24 +188,28 @@
             `;
             
             div.onclick = function() {
-                // Hapus highlight dari semua item, lalu highlight item yang di-klik
+                // Hapus efek aktif dari yang lain
                 document.querySelectorAll('.file-item').forEach(i => i.classList.remove('active'));
                 div.classList.add('active');
                 
-                // 1. Dapatkan URL asli file
+                // URL asli
                 const fileUrl = rawBaseUrl + encodeURIComponent(fileName);
-                
-                // 2. Gunakan Google Docs Viewer untuk membongkar blokir iframe
+                // URL Google Viewer
                 const googleViewerUrl = 'https://docs.google.com/viewer?url=' + encodeURIComponent(fileUrl) + '&embedded=true';
                 
-                // Tampilkan iframe dan sembunyikan pesan placeholder
+                // Tampilkan Iframe
                 msg.style.display = 'none';
                 viewer.style.display = 'block';
                 viewer.src = googleViewerUrl;
 
-                // Tampilkan tombol "Buka di Tab Baru" di pojok kanan bawah
+                // Siapkan tombol eksternal
                 fallbackBtn.href = fileUrl;
                 fallbackBtn.style.display = 'block';
+                
+                // Opsional untuk HP: Scroll otomatis sedikit ke bawah agar preview terlihat jelas
+                if (window.innerWidth <= 768) {
+                    document.getElementById('preview-container').scrollIntoView({ behavior: 'smooth' });
+                }
             };
             
             listElement.appendChild(div);
