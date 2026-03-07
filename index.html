@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>3D Pig Receiver (S-3000) - Full Responsive</title>
+    <title>3D Pig Receiver (S-3000) - Full Scale Range</title>
     <style>
         body { 
             margin: 0; 
             overflow: hidden; 
             background-color: #1e272e; 
-            touch-action: none; /* Penting untuk kelancaran di layar sentuh */
+            touch-action: none; /* Penting untuk kelancaran di layar sentuh HP/Tablet */
         } 
         #info { 
             position: absolute; 
@@ -39,32 +39,43 @@
 <body>
     <div id="info">
         <h2>PIG RECEIVER (S-3000) - Real Scale (mm)</h2>
-        <p>1 Unit = 1mm | Major: 12" O.D 323.8mm | Minor: 8" O.D 219.1mm</p>
+        <p>1 Unit = 1mm | Major: 12" O.D | Minor: 8" O.D</p>
     </div>
     
     <script>
         // 1. Setup Scene & Camera
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 10, 15000);
         
-        // Atur posisi kamera awal berdasarkan jenis perangkat
+        // --- PERUBAHAN DISINI (Kamera) ---
+        // Menambah 'far' (parameter ke-4) menjadi 500,000 agar objek tidak hilang saat jauh.
+        // Menambah 'near' (parameter ke-3) sedikit menjadi 20 untuk mencegah kedipan (Z-fighting) di HP.
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 20, 500000);
+        
+        // Atur posisi kamera awal berdasarkan jenis perangkat (Responsif)
         const isMobile = window.innerWidth < 768;
-        camera.position.set(isMobile ? 3500 : 1500, 1200, isMobile ? 4500 : 2500); 
+        // Kamera dimulai dari jarak menengah agar objek terlihat jelas di awal
+        camera.position.set(isMobile ? 4000 : 2000, 1500, isMobile ? 5000 : 3000); 
 
         const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        renderer.setPixelRatio(window.devicePixelRatio); // Agar tajam di iPad/iPhone
+        renderer.setPixelRatio(window.devicePixelRatio); // Agar tajam di layar Retina (iPad/iPhone)
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
+        // --- PERUBAHAN DISINI (Controls) ---
         const controls = new THREE.OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
+        // Membatasi seberapa jauh pengguna bisa Zoom Out.
+        // 150,000mm (150 meter) membuat objek terlihat sangat kecil namun tidak hilang.
+        controls.maxDistance = 150000; 
+        // Membatasi seberapa dekat pengguna bisa Zoom In agar tidak menembus objek.
+        controls.minDistance = 500; 
 
-        // 2. Pencahayaan
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        // 2. Pencahayaan (Ditingkatkan agar tetap terlihat jelas saat kecil)
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
         scene.add(ambientLight);
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(1000, 2000, 1000);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.9);
+        dirLight.position.set(2000, 4000, 2000);
         scene.add(dirLight);
 
         // 3. Material
@@ -73,7 +84,7 @@
 
         const vesselGroup = new THREE.Group();
 
-        // --- DIMENSI UTAMA (dalam mm) ---
+        // --- DIMENSI UTAMA (dalam mm) - TETAP SESUAI ASLI ---
         const majorOD = 323.8;
         const minorOD = 219.1;
         const majorLength = 1620;
@@ -116,7 +127,7 @@
         reducerMesh.rotation.z = Math.PI / 2;
         vesselGroup.add(reducerMesh);
 
-        // 7. FUNGSI PEMBUAT NOZZLE
+        // 7. FUNGSI PEMBUAT NOZZLE (Detail Tetap)
         function createNozzle(pipeOD, length, flangeOD, flangeThick, isTop = true) {
             const nozzleGroup = new THREE.Group();
             const pipeGeo = new THREE.CylinderGeometry(pipeOD/2, pipeOD/2, length, 32);
@@ -161,7 +172,7 @@
         nozzleN3.position.set(majorCenterX + 100, -majorOD/2, 0); 
         vesselGroup.add(nozzleN3);
 
-        // 8. SADDLE SUPPORTS
+        // 8. SADDLE SUPPORTS (Detail Tetap)
         function createSaddle(pipeOD, xPosition, centerY = 0) {
             const saddleGroup = new THREE.Group();
             const elevasiDasar = 545;
@@ -181,7 +192,7 @@
         vesselGroup.add(createSaddle(majorOD, posKananX, 0));
         vesselGroup.add(createSaddle(minorOD, posKiriX, turunY));
 
-        // 9. LIFTING LUG (Presisi)
+        // 9. LIFTING LUG (Presisi Tetap)
         function createLiftingLug(pipeOD, xPosition, centerY = 0) {
             const lugGroup = new THREE.Group();
             const padGeo = new THREE.BoxGeometry(140, 10, 100); 
@@ -214,13 +225,13 @@
         vesselGroup.add(createLiftingLug(majorOD, posKananX, 0));
         vesselGroup.add(createLiftingLug(minorOD, posKiriX, turunY));
 
-        // 10. EARTH LUG
+        // 10. EARTH LUG (Detail Tetap)
         const earthLugGeo = new THREE.BoxGeometry(40, 40, 10);
         const earthLugMesh = new THREE.Mesh(earthLugGeo, steelMaterial);
         earthLugMesh.position.set(posKananX, -450, 80); 
         vesselGroup.add(earthLugMesh);
 
-        // 11. QUICK OPENING CLOSURE (QOC)
+        // 11. QUICK OPENING CLOSURE (QOC - Detail Tetap)
         const qocGroup = new THREE.Group();
         const hubOD = majorOD + 40; 
         const hubGeo = new THREE.CylinderGeometry(hubOD/2, hubOD/2, 80, 32);
