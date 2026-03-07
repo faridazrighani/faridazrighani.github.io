@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Pig Receiver (S-3000) - Skala 1:1 (mm)</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #1e272e; } 
+        #info { position: absolute; top: 15px; width: 100%; text-align: center; font-family: 'Segoe UI', Tahoma, sans-serif; color: #ecf0f1; pointer-events: none; text-shadow: 1px 1px 2px black; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+    <div id="info">
+        <h2>PIG RECEIVER (S-3000) - Real Scale (mm)</h2>
+        <p>1 Unit = 1 Milimeter | Major: 12" O.D 323.8mm | Minor: 8" O.D 219.1mm</p>
+    </div>
+    
+    <script>
+        // 1. Setup Scene & Camera
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 10, 10000);
+        camera.position.set(1500, 1200, 2500); 
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+
+        // 2. Pencahayaan
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        scene.add(ambientLight);
+        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        dirLight.position.set(1000, 2000, 1000);
+        scene.add(dirLight);
+
+        // 3. Material
+        const steelMaterial = new THREE.MeshStandardMaterial({ color: 0xbdc3c7, roughness: 0.4, metalness: 0.5 });
+        const darkSteel = new THREE.MeshStandardMaterial({ color: 0x7f8c8d });
+
+        const vesselGroup = new THREE.Group();
+
+        // --- DIMENSI UTAMA (dalam mm) ---
+        const majorOD = 323.8;
+        const minorOD = 219.1;
+        const majorLength = 1620;
+        const minorLength = 1930; 
+        const reducerLength = 203;
+
+        const majorCenterX = (majorLength / 2) + (reducerLength / 2);
+        const minorCenterX = -((minorLength / 2) + (reducerLength / 2));
+        
+        // Jarak pipa 8" harus melorot ke bawah biar rata bawah (B.O.P)
+        const turunY = -((majorOD / 2) - (minorOD / 2)); 
+
+        // --- HITUNG POSISI X UNTUK LIFTING LUG & SADDLE (Sesuai Gambar Teknik) ---
+        // 300mm dari ujung kanan Major Barrel (sebelum QOC)
+        const posKananX = majorCenterX + (majorLength / 2) - 300; 
+        // 400mm dari ujung kiri Minor Barrel (sebelum Flange N1)
+        const posKiriX = minorCenterX - (minorLength / 2) + 400;  
+
+        // 4. Major Barrel
+        const majorGeo = new THREE.CylinderGeometry(majorOD/2, majorOD/2, majorLength, 64);
+        const majorMesh = new THREE.Mesh(majorGeo, steelMaterial);
+        majorMesh.rotation.z = Math.PI / 2; 
+        majorMesh.position.x = majorCenterX;
+        vesselGroup.add(majorMesh);
+
+        // 5. Minor Barrel (Diturunkan posisinya biar rata bawah)
+        const minorGeo = new THREE.CylinderGeometry(minorOD/2, minorOD/2, minorLength, 64);
+        const minorMesh = new THREE.Mesh(minorGeo, steelMaterial);
+        minorMesh.rotation.z = Math.PI / 2;
+        minorMesh.position.set(minorCenterX, turunY, 0); 
+        vesselGroup.add(minorMesh);
+
+        // 6. Reducer (Ilmu Hitam: Eccentric / Rata Bawah)
+        const reducerGeo = new THREE.CylinderGeometry(minorOD/2, majorOD/2, reducerLength, 64);
+        const posAttribute = reducerGeo.attributes.position;
+        const selisihRadius = (majorOD / 2) - (minorOD / 2); 
+        for (let i = 0; i < posAttribute.count; i++) {
+            let y = posAttribute.getY(i); 
+            let t = (y - (-reducerLength/2)) / reducerLength; 
+            let currentX = posAttribute.getX(i);
+            posAttribute.setX(i, currentX - (selisihRadius * t)); 
+        }
+        reducerGeo.computeVertexNormals(); 
+        const reducerMesh = new THREE.Mesh(reducerGeo, steelMaterial);
+        reducerMesh.rotation.z = Math.PI / 2;
+        vesselGroup.add(reducerMesh);
+
+        // 7. FUNGSI PEMBUAT NOZZLE
+        function createNozzle(pipeOD, length, flangeOD, flangeThick, isTop = true) {
+            const nozzleGroup = new THREE.Group();
+            const pipeGeo = new THREE.CylinderGeometry(pipeOD/2, pipeOD/2, length, 32);
+            const pipe = new THREE.Mesh(pipeGeo, steelMaterial);
+            pipe.position.y = isTop ? length / 2 : -length / 2; 
+            nozzleGroup.add(pipe);
+
+            const flangeGeo = new THREE.CylinderGeometry(flangeOD/2, flangeOD/2, flangeThick, 32);
+            const flange = new THREE.Mesh(flangeGeo, darkSteel);
+            flange.position.y = isTop ? length + (flangeThick / 2) : -(length + (flangeThick / 2));
+            nozzleGroup.add(flange);
+            return nozzleGroup;
+        }
+
+        // --- MENAMBAHKAN NOZZLE ---
+        const nozzleN1 = createNozzle(minorOD, 100, 340, 30, true);
+        nozzleN1.rotation.z = Math.PI / 2; 
+        nozzleN1.position.set(minorCenterX - (minorLength/2), turunY, 0);
+        vesselGroup.add(nozzleN1);
+
+        const nozzleN5 = createNozzle(60.3, 150, 165, 20, true);
+        nozzleN5.position.set(minorCenterX + 100, (minorOD/2) + turunY, 0); 
+        vesselGroup.add(nozzleN5);
+
+        const nozzleN6 = createNozzle(60.3, 150, 165, 20, true);
+        nozzleN6.position.set(majorCenterX - 350, majorOD/2, 0);
+        vesselGroup.add(nozzleN6);
+
+        const nozzleN4 = createNozzle(26.7, 150, 115, 15, true);
+        nozzleN4.position.set(majorCenterX - 50, majorOD/2, 0);
+        vesselGroup.add(nozzleN4);
+
+        const nozzleN8 = createNozzle(33.4, 150, 125, 15, true);
+        nozzleN8.position.set(majorCenterX + 250, majorOD/2, 0);
+        vesselGroup.add(nozzleN8);
+
+        const nozzleN7 = createNozzle(60.3, 150, 165, 20, false);
+        nozzleN7.position.set(majorCenterX - 150, -majorOD/2, 0); 
+        vesselGroup.add(nozzleN7);
+
+        const nozzleN3 = createNozzle(60.3, 150, 165, 20, false);
+        nozzleN3.position.set(majorCenterX + 100, -majorOD/2, 0); 
+        vesselGroup.add(nozzleN3);
+
+        // 8. SADDLE SUPPORTS (Sejajar dengan Lifting Lug)
+        function createSaddle(pipeOD, xPosition, centerY = 0) {
+            const saddleGroup = new THREE.Group();
+            const elevasiDasar = 545;
+            const tinggiOverlap = 30; 
+            const jarakKeLantai = elevasiDasar + centerY; 
+            const tinggiSaddle = (jarakKeLantai - (pipeOD / 2)) + tinggiOverlap;
+            
+            const saddleGeo = new THREE.BoxGeometry(150, tinggiSaddle, pipeOD * 0.9);
+            const saddleMesh = new THREE.Mesh(saddleGeo, darkSteel);
+            saddleMesh.position.y = (-elevasiDasar - centerY) + (tinggiSaddle / 2);
+            
+            saddleGroup.add(saddleMesh);
+            saddleGroup.position.set(xPosition, centerY, 0);
+            return saddleGroup;
+        }
+
+        const saddle1 = createSaddle(majorOD, posKananX, 0); 
+        vesselGroup.add(saddle1);
+        const saddle2 = createSaddle(minorOD, posKiriX, turunY);  
+        vesselGroup.add(saddle2);
+
+        // 9. LIFTING LUG (Kupingan Crane Presisi)
+        function createLiftingLug(pipeOD, xPosition, centerY = 0) {
+            const lugGroup = new THREE.Group();
+            
+            // a. Plat Landasan
+            const padGeo = new THREE.BoxGeometry(140, 10, 100); 
+            const padMesh = new THREE.Mesh(padGeo, steelMaterial);
+            padMesh.position.y = (pipeOD / 2) + 5; 
+            lugGroup.add(padMesh);
+            
+            // b. Plat Vertikal
+            const earWidth = 80;
+            const earThickness = 20;
+            const earHeight = 50;
+            const earBoxGeo = new THREE.BoxGeometry(earWidth, earHeight, earThickness);
+            const earBoxMesh = new THREE.Mesh(earBoxGeo, steelMaterial);
+            earBoxMesh.position.y = padMesh.position.y + 5 + (earHeight / 2);
+            lugGroup.add(earBoxMesh);
+            
+            const earTopGeo = new THREE.CylinderGeometry(earWidth/2, earWidth/2, earThickness, 32);
+            const earTopMesh = new THREE.Mesh(earTopGeo, steelMaterial);
+            earTopMesh.rotation.x = Math.PI / 2;
+            earTopMesh.position.y = earBoxMesh.position.y + (earHeight / 2);
+            lugGroup.add(earTopMesh);
+            
+            // c. Lubang Crane
+            const holeGeo = new THREE.CylinderGeometry(15, 15, earThickness + 2, 16);
+            const holeMesh = new THREE.Mesh(holeGeo, new THREE.MeshBasicMaterial({color: 0x000000}));
+            holeMesh.rotation.x = Math.PI / 2;
+            holeMesh.position.y = earTopMesh.position.y;
+            lugGroup.add(holeMesh);
+            
+            lugGroup.position.set(xPosition, centerY, 0);
+            return lugGroup;
+        }
+
+        const liftingLug1 = createLiftingLug(majorOD, posKananX, 0);
+        vesselGroup.add(liftingLug1);
+        const liftingLug2 = createLiftingLug(minorOD, posKiriX, turunY);
+        vesselGroup.add(liftingLug2);
+
+        // 10. EARTH LUG
+        const earthLugGeo = new THREE.BoxGeometry(40, 40, 10);
+        const earthLugMesh = new THREE.Mesh(earthLugGeo, steelMaterial);
+        earthLugMesh.position.set(posKananX, -450, 80); 
+        vesselGroup.add(earthLugMesh);
+
+        // 11. QUICK OPENING CLOSURE (QOC)
+        const qocGroup = new THREE.Group();
+        const hubOD = majorOD + 40; 
+        const hubLength = 80;
+        const hubGeo = new THREE.CylinderGeometry(hubOD/2, hubOD/2, hubLength, 32);
+        const hubMesh = new THREE.Mesh(hubGeo, darkSteel);
+        hubMesh.rotation.z = Math.PI / 2;
+        hubMesh.position.set(hubLength/2, 0, 0);
+        qocGroup.add(hubMesh);
+
+        const doorOD = hubOD + 30; 
+        const doorLength = 40;
+        const doorGeo = new THREE.CylinderGeometry(doorOD/2, doorOD/2, doorLength, 32);
+        const doorMesh = new THREE.Mesh(doorGeo, steelMaterial);
+        doorMesh.rotation.z = Math.PI / 2;
+        doorMesh.position.set(hubLength + (doorLength/2), 0, 0);
+        qocGroup.add(doorMesh);
+
+        const domeGeo = new THREE.SphereGeometry(doorOD/2, 32, 16, 0, Math.PI * 2, 0, Math.PI/2);
+        const domeMesh = new THREE.Mesh(domeGeo, steelMaterial);
+        domeMesh.rotation.z = -Math.PI / 2; 
+        domeMesh.scale.set(1, 0.25, 1); 
+        domeMesh.position.set(hubLength + doorLength, 0, 0);
+        qocGroup.add(domeMesh);
+
+        const hingeGeo = new THREE.BoxGeometry(90, 40, 60);
+        const hingeMesh = new THREE.Mesh(hingeGeo, darkSteel);
+        hingeMesh.position.set(hubLength, 0, (hubOD/2) + 20); 
+        qocGroup.add(hingeMesh);
+
+        const lockBaseGeo = new THREE.CylinderGeometry(25, 25, 50, 16);
+        const lockBase = new THREE.Mesh(lockBaseGeo, darkSteel);
+        lockBase.rotation.z = Math.PI / 2;
+        lockBase.position.set(hubLength + doorLength + 20, 0, 0);
+        qocGroup.add(lockBase);
+        
+        const wheelGeo = new THREE.TorusGeometry(50, 8, 16, 32);
+        const wheelMesh = new THREE.Mesh(wheelGeo, darkSteel);
+        wheelMesh.rotation.y = Math.PI / 2;
+        wheelMesh.position.set(hubLength + doorLength + 40, 0, 0);
+        qocGroup.add(wheelMesh);
+
+        qocGroup.position.set(majorCenterX + (majorLength/2), 0, 0);
+        vesselGroup.add(qocGroup);
+
+        scene.add(vesselGroup);
+
+        // 12. Animasi Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
